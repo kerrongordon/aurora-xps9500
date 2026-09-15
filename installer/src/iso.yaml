@@ -1,16 +1,20 @@
 label: "AURORA-XPS9500-LIVE"
-# selinux=0 on both entries: installer/Containerfile builds this layer with
+# enforcing=0 on both entries: installer/Containerfile builds this layer with
 # `podman build --squash --security-opt label=disable`, which strips
-# security.selinux xattrs from the flattened image. Booted with a kernel
-# that still expects a policy, that leaves every relabel denied and
-# systemd dead on "Failed to allocate manager object". Only affects this
-# throwaway live layer, not the daily-driver aurora-xps9500:latest image.
+# security.selinux xattrs from the flattened image. Booted enforcing, that
+# leaves every relabel denied and systemd dead on "Failed to allocate
+# manager object". ublue-os/titanoboa's own bazzite example builds with the
+# identical squash/label-disable flags and hits the same issue — their
+# iso.yaml uses enforcing=0 (policy stays loaded, permissive) rather than
+# selinux=0 (policy never loads at all), so match that rather than the
+# heavier-handed fix. Only affects this throwaway live layer, not the
+# daily-driver aurora-xps9500:latest image.
 grub2:
   timeout: 10
   entries:
     - name: "Start aurora-xps9500 (Live)"
-      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=AURORA-XPS9500-LIVE rd.live.image selinux=0"
+      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=AURORA-XPS9500-LIVE rd.live.image enforcing=0"
       initrd: "/images/pxeboot/initrd.img"
     - name: "Start aurora-xps9500 (Live, Basic Graphics)"
-      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=AURORA-XPS9500-LIVE rd.live.image nomodeset selinux=0"
+      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=AURORA-XPS9500-LIVE rd.live.image nomodeset enforcing=0"
       initrd: "/images/pxeboot/initrd.img"
