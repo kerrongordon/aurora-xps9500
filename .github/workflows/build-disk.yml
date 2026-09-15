@@ -72,7 +72,18 @@ jobs:
         if: inputs.platform != 'arm64'
         uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
         with:
-          remove-codeql: true
+          extra-squeeze: true
+
+      # Works around a storage-driver mismatch on current GitHub-hosted
+      # runners that makes osbuild's containers-storage mount fail with
+      # "permission denied" inside bootc-image-builder.
+      # https://github.com/osbuild/bootc-image-builder/issues/446
+      - name: Reset podman storage config
+        run: |
+          sudo rm -rf /var/lib/containers/storage
+          sudo mkdir -p /etc/containers
+          printf '[storage]\ndriver = "overlay"\nrunroot = "/run/containers/storage"\ngraphroot = "/var/lib/containers/storage"\n' \
+            | sudo tee /etc/containers/storage.conf
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
