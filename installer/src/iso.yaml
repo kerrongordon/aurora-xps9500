@@ -1,10 +1,16 @@
 label: "AURORA-XPS9500-LIVE"
+# selinux=0 on both entries: installer/Containerfile builds this layer with
+# `podman build --squash --security-opt label=disable`, which strips
+# security.selinux xattrs from the flattened image. Booted with a kernel
+# that still expects a policy, that leaves every relabel denied and
+# systemd dead on "Failed to allocate manager object". Only affects this
+# throwaway live layer, not the daily-driver aurora-xps9500:latest image.
 grub2:
   timeout: 10
   entries:
     - name: "Start aurora-xps9500 (Live)"
-      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=AURORA-XPS9500-LIVE rd.live.image"
+      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=AURORA-XPS9500-LIVE rd.live.image selinux=0"
       initrd: "/images/pxeboot/initrd.img"
     - name: "Start aurora-xps9500 (Live, Basic Graphics)"
-      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=AURORA-XPS9500-LIVE rd.live.image nomodeset"
+      linux: "/images/pxeboot/vmlinuz quiet rhgb root=live:CDLABEL=AURORA-XPS9500-LIVE rd.live.image nomodeset selinux=0"
       initrd: "/images/pxeboot/initrd.img"
