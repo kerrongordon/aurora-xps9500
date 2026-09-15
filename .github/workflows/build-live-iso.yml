@@ -37,21 +37,22 @@ jobs:
             -t localhost/aurora-xps9500-installer:latest \
             installer/
 
-      # titanoboa's action wrapper resolves iso-dest with a plain `realpath`
-      # (no -m) before it exists, so the destination directory must already
-      # be there or that resolution silently fails.
-      - name: Prepare output directory
-        run: mkdir -p output
-
+      # Deliberately not passing `iso-dest`: the action's own wrapper `cd`s
+      # into its own action directory before resolving that path, so an
+      # absolute path under $GITHUB_WORKSPACE silently lands inside
+      # _actions/ublue-os/titanoboa/ instead. Consuming the `iso-dest`
+      # *output* afterward and moving it ourselves — exactly what the
+      # project's own bluefin-dx example in its README does — sidesteps it.
       - name: Build live ISO
         id: build
         uses: ublue-os/titanoboa@main
         with:
           image-ref: localhost/aurora-xps9500-installer:latest
-          iso-dest: ${{ github.workspace }}/output/aurora-xps9500-live-amd64.iso
 
-      - name: Checksum
+      - name: Move and checksum ISO
         run: |
+          mkdir -p output
+          mv "${{ steps.build.outputs.iso-dest }}" output/aurora-xps9500-live-amd64.iso
           cd output
           sha256sum aurora-xps9500-live-amd64.iso | tee aurora-xps9500-live-amd64.iso-CHECKSUM
 
