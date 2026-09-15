@@ -32,12 +32,34 @@ podman-only and doesn't want DX's bundled Docker/Incus.
    zsh-related (config, plugins, starship, mise via Homebrew) is
    deliberately user-space — see below.
 
+3. **zsh as the default shell for new accounts** (`system_files/etc/default/useradd`).
+   Only affects accounts created after switching to this image — an existing
+   account keeps whatever `/etc/passwd` already has, so it still needs a
+   one-time `sudo chsh -s /usr/bin/zsh $USER` (the setup script below does
+   this for you).
+
+4. **`/etc/zshenv`** (`system_files/etc/zshenv`) — the `ZDOTDIR` hook, so any
+   shell reads config from `~/.config/zsh` once it exists. Fedora reads
+   `/etc/zshenv`, not Debian's `/etc/zsh/zshenv`.
+
 ## What stays out of the image
 
 Homebrew and everything under it, the zsh config itself, dotfiles, fonts,
-toolbox provisioning — all handled by `setup-zsh-aurora.sh` on the running
-system, not in this repo. Rule of thumb: if it works from `$HOME`, it
-doesn't belong here.
+toolbox provisioning. These need `$HOME` and a network connection, which the
+image can't provide, so they run post-install instead:
+
+- **`setup-zsh-aurora.sh`** (`system_files/usr/libexec/`) — clones
+  `radleylewis/zsh` into `~/.config/zsh`, installs Homebrew + dev CLI tools +
+  mise, sets the login shell for existing accounts, and provisions a Toolbx
+  container. Idempotent; safe to re-run by hand.
+- **`setup-zsh-aurora.service`** (a systemd `--user` unit, enabled by default
+  via a `default.target.wants` symlink) — runs that script once per account,
+  guarded by a stamp file at `~/.local/state/setup-zsh-aurora.done`. Picked
+  the first-login-unit approach over an `/etc/skel` checkout specifically so
+  the brew/mise/Toolbx steps run automatically too — `/etc/skel` can only
+  drop files at account-creation time, it can't execute anything.
+
+Rule of thumb: if it works from `$HOME`, it doesn't belong in the image.
 
 ## Building locally
 

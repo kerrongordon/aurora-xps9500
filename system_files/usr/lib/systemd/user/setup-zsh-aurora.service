@@ -1,0 +1,20 @@
+[Unit]
+Description=One-time zsh/dev environment setup (radleylewis/zsh, Homebrew, mise, Toolbx)
+ConditionPathExists=!%h/.local/state/setup-zsh-aurora.done
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/setup-zsh-aurora.sh --system-zshenv
+ExecStartPost=/usr/bin/mkdir -p %h/.local/state
+ExecStartPost=/usr/bin/touch %h/.local/state/setup-zsh-aurora.done
+StandardOutput=journal
+StandardError=journal
+
+# No network-online.target ordering: user units can't reliably depend on
+# system targets. If this fails (no network yet, etc.) the ExecStartPost
+# touch never runs, so the stamp file stays absent and it retries on the
+# next login instead of silently succeeding half-done.
+
+[Install]
+WantedBy=default.target
