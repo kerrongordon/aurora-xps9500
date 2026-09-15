@@ -37,6 +37,12 @@ jobs:
             -t localhost/aurora-xps9500-installer:latest \
             installer/
 
+      # titanoboa's action wrapper resolves iso-dest with a plain `realpath`
+      # (no -m) before it exists, so the destination directory must already
+      # be there or that resolution silently fails.
+      - name: Prepare output directory
+        run: mkdir -p output
+
       - name: Build live ISO
         id: build
         uses: ublue-os/titanoboa@main
