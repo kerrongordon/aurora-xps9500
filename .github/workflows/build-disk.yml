@@ -36,7 +36,12 @@ concurrency:
 jobs:
   build:
     name: Build disk images
-    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
+    # Pinned older than build.yml deliberately: bootc-image-builder relies on
+    # privileged nested bind-mounts (containers-storage, /dev) inside its own
+    # container, and that broke on ubuntu-26.04 with "mount: permission
+    # denied" on every mount — a runner-image regression, not anything in
+    # this repo. Plain `podman build` (build.yml) doesn't hit it.
+    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     strategy:
       fail-fast: false
       matrix:
