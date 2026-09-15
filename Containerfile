@@ -4,16 +4,11 @@ COPY build_files /
 COPY system_files /system_files
 
 # Base Image
-FROM ghcr.io/ublue-os/bazzite:stable@sha256:9556db65991d57a03a7dc18e4ba28a686d8bcdcd6b61235aa69c8267bb22ff76
-## Other possible base images include:
-# FROM ghcr.io/ublue-os/bazzite:testing
-# FROM ghcr.io/ublue-os/aurora:stable
-# FROM ghcr.io/ublue-os/bluefin-nvidia-open:stable
-# 
-# ... and so on, here are more base images
-# Universal Blue Images: https://github.com/orgs/ublue-os/packages
-# Fedora base image: quay.io/fedora/fedora-bootc:44
-# CentOS base images: quay.io/centos-bootc/centos-bootc:stream10
+# aurora-nvidia-open: KDE, Fedora 44 line, open nvidia driver (Turing+, covers
+# the GTX 1650 Ti in the target Dell XPS 9500) and pre-signed so no MOK
+# enrollment is needed. Base Aurora (not aurora-dx) since this setup is
+# podman-only and doesn't want DX's bundled Docker/Incus.
+FROM ghcr.io/ublue-os/aurora-nvidia-open:stable@sha256:e5e74716027167cc8b5e90c25fadad4117550cc9bea88a45a237931bee41a8d4
 
 ### [IM]MUTABLE /opt
 ## Some bootable images, like Fedora, have /opt symlinked to /var/opt, in order to
