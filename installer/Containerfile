@@ -1,0 +1,11 @@
+# Built fresh for each live-ISO run and never published. Layers Titanoboa's
+# live-boot requirements (Container-native ISO contract v0.1.0) on top of
+# the real image, so the daily-driver image (aurora-xps9500:latest) stays
+# exactly stock Aurora + Goodix — no live-session cruft, no initramfs swap.
+#
+# Build with: sudo podman build --cap-add sys_admin --security-opt label=disable --squash -t localhost/aurora-xps9500-installer .
+FROM ghcr.io/kerrongordon/aurora-xps9500:latest
+COPY ./src /src
+RUN --mount=type=cache,target=/var/tmp/libdnf5,id=libdnf5 \
+    /src/build.sh
+RUN rm -fr /src
