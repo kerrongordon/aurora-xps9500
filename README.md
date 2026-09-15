@@ -1,9 +1,10 @@
 # aurora-xps9500
 
 A personal [bootc](https://github.com/bootc-dev/bootc) image, derived from
-[Aurora](https://github.com/ublue-os/aurora), for a Dell XPS 9500. It bakes in
-the things that are painful as runtime `rpm-ostree override`s so they rebuild
-cleanly with every `bootc upgrade` instead of fighting it.
+[Aurora](https://github.com/ublue-os/aurora), for a Dell XPS 9500. Everything
+is stock Aurora except one addition: the Goodix fingerprint driver, baked in
+at build time instead of as a runtime `rpm-ostree override` (which could
+otherwise block `bootc upgrade` on any Fedora libfprint bump).
 
 ## Base
 
@@ -12,54 +13,28 @@ ghcr.io/ublue-os/aurora-nvidia-open:stable
 ```
 
 KDE, Fedora 44 line. `-nvidia-open` because the GTX 1650 Ti (Turing) in this
-laptop is supported by the open driver, and the image ships pre-signed so no
-MOK enrollment is needed. Base Aurora, not `aurora-dx` — this setup is
-podman-only and doesn't want DX's bundled Docker/Incus.
+laptop is supported by the open driver, which ships as the default in this
+image — nothing extra needed for NVIDIA. Base Aurora, not `aurora-dx` — this
+setup is podman-only and doesn't want DX's bundled Docker/Incus.
 
 ## What's baked in
 
-1. **Goodix fingerprint driver** (`27c6:533c`), via `libfprint-tod-goodix`
-   from COPR [`manciukic/libfprint-tod-goodix`](https://copr.fedorainfracloud.org/coprs/manciukic/libfprint-tod-goodix/)
-   — libfprint doesn't drive this reader in-tree. This has to happen at
-   build time: as a runtime override it can block `bootc upgrade` the
-   moment Fedora bumps libfprint.
+**Goodix fingerprint driver** (`27c6:533c`), via `libfprint-tod-goodix` from
+COPR [`manciukic/libfprint-tod-goodix`](https://copr.fedorainfracloud.org/coprs/manciukic/libfprint-tod-goodix/)
+— libfprint doesn't drive this reader in-tree.
 
-   If the COPR hasn't published a build for the base image's current Fedora
-   release yet, pin `build_files/build.sh` to an older `fedora-NN` repo —
-   the blob itself is release-agnostic.
+`libfprint-tod` only `Provides: libfprint = 1.94.5`, no `Obsoletes`, and that
+trails Fedora 44's stock libfprint — so `build_files/build.sh` uses
+`dnf5 swap` rather than `install`, otherwise dnf5 sees it as a downgrade and
+fails on file conflicts.
 
-2. **zsh**, so a login shell always exists in `/usr`. Everything else
-   zsh-related (config, plugins, starship, mise via Homebrew) is
-   deliberately user-space — see below.
+If the COPR hasn't published a build for the base image's current Fedora
+release yet, pin `build_files/build.sh` to an older `fedora-NN` repo instead
+— the blob itself is release-agnostic.
 
-3. **zsh as the default shell for new accounts** (`system_files/etc/default/useradd`).
-   Only affects accounts created after switching to this image — an existing
-   account keeps whatever `/etc/passwd` already has, so it still needs a
-   one-time `sudo chsh -s /usr/bin/zsh $USER` (the setup script below does
-   this for you).
-
-4. **`/etc/zshenv`** (`system_files/etc/zshenv`) — the `ZDOTDIR` hook, so any
-   shell reads config from `~/.config/zsh` once it exists. Fedora reads
-   `/etc/zshenv`, not Debian's `/etc/zsh/zshenv`.
-
-## What stays out of the image
-
-Homebrew and everything under it, the zsh config itself, dotfiles, fonts,
-toolbox provisioning. These need `$HOME` and a network connection, which the
-image can't provide, so they run post-install instead:
-
-- **`setup-zsh-aurora.sh`** (`system_files/usr/libexec/`) — clones
-  `radleylewis/zsh` into `~/.config/zsh`, installs Homebrew + dev CLI tools +
-  mise, sets the login shell for existing accounts, and provisions a Toolbx
-  container. Idempotent; safe to re-run by hand.
-- **`setup-zsh-aurora.service`** (a systemd `--user` unit, enabled by default
-  via a `default.target.wants` symlink) — runs that script once per account,
-  guarded by a stamp file at `~/.local/state/setup-zsh-aurora.done`. Picked
-  the first-login-unit approach over an `/etc/skel` checkout specifically so
-  the brew/mise/Toolbx steps run automatically too — `/etc/skel` can only
-  drop files at account-creation time, it can't execute anything.
-
-Rule of thumb: if it works from `$HOME`, it doesn't belong in the image.
+Everything else — zsh, dotfiles, Homebrew, dev tools — is deliberately left
+out of the image and handled separately, post-install, on the running
+system.
 
 ## Building locally
 
@@ -82,8 +57,17 @@ sudo bootc switch --enforce-container-sigpolicy ghcr.io/kerrongordon/aurora-xps9
 - `rpm -q libfprint-tod-goodix` present, `libfprint` replaced not duplicated
 - `fprintd` starts and sees the device: `fprintd-list $USER`
 - `fprintd-enroll`, then `authselect enable-feature with-fingerprint`
-- `/usr/bin/zsh` exists
 - Image boots and `bootc upgrade` resolves cleanly
+
+## Getting an ISO
+
+GitHub Actions → **Build disk images** → **Run workflow** → pick `amd64`.
+Builds an Anaconda installer ISO (and a qcow2) from whatever's currently at
+`ghcr.io/kerrongordon/aurora-xps9500:latest`; the ISO installs like stock
+Fedora, then a kickstart `%post` step runs `bootc switch` to land you on this
+image. Pinned to `ubuntu-24.04` in `build-disk.yml` — `bootc-image-builder`'s
+privileged nested mounts broke on `ubuntu-26.04` (a runner-image regression,
+unrelated to this repo).
 
 ## Repo layout
 
@@ -94,5 +78,6 @@ See that repo's README for the mechanics of the `Justfile`, disk-image
 builds, and ArtifactHub listing — the pieces specific to this image are:
 
 - `Containerfile` — `FROM` the base above, then `RUN /ctx/build.sh`
-- `build_files/build.sh` — the COPR + package install, kept idempotent
-- `system_files/` — file overlays, empty for now
+- `build_files/build.sh` — the Goodix COPR swap, kept idempotent
+- `system_files/` — file overlays, empty (no overrides beyond the driver)
+- `disk_config/iso.toml` — the KDE installer kickstart for ISO builds

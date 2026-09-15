@@ -25,10 +25,3 @@ cp -avf "/ctx/system_files"/. /
 dnf5 -y copr enable manciukic/libfprint-tod-goodix
 dnf5 -y swap --allowerasing libfprint libfprint-tod-goodix
 dnf5 -y copr disable manciukic/libfprint-tod-goodix
-
-### zsh — must exist in /usr as a login shell
-#
-# Cannot come from Homebrew: a broken brew prefix would lock out every
-# terminal. Everything else zsh-related (config, plugins, starship, mise)
-# stays in $HOME via setup-zsh-aurora.sh, not in this image.
-dnf5 -y install zsh
