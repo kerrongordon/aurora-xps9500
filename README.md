@@ -39,7 +39,7 @@ system.
 ## Building locally
 
 ```bash
-docker build -t test .
+docker build -f Containerfile -t test .
 ```
 
 (This host doesn't have podman/buildah; `docker build` works fine against
