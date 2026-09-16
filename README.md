@@ -39,11 +39,12 @@ system.
 ## Building locally
 
 ```bash
-docker build -f Containerfile -t test .
+podman build -t test .
 ```
 
-(This host doesn't have podman/buildah; `docker build` works fine against
-the same Containerfile. CI uses podman via the `Justfile`.)
+Install Podman and Just before building. Use `just build` for the same
+Podman build with image metadata used by CI. Podman automatically reads
+the `Containerfile`.
 
 ## Switching to this image
 
