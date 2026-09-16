@@ -3,17 +3,15 @@
 # Layers Titanoboa's Container-native ISO contract v0.1.0 onto the real
 # aurora-xps9500 image. Adapted from ublue-os/titanoboa's own
 # examples/bazzite/src/build.sh, with the Bazzite-specific branding,
-# secure-boot enrollment, and flatpak preseeding dropped — but NOT its
+# secure-boot enrollment, and full flatpak preseeding dropped — but NOT its
 # titanoboa_hook_postrootfs.sh anaconda-live install, which is the actual
 # installer mechanism. Earlier revisions of this script skipped that too,
 # on the mistaken assumption livesys-scripts provides an installer by
 # itself; it doesn't, so there was no way to install from the live session
 # at all. See the anaconda-live block below for what's added back.
 #
-# Flatpaks intentionally stay out of the live session: Aurora's normal
-# first-boot flatpak install runs against a real installed system, not an
-# ephemeral live overlay, and isn't worth duplicating here just so a
-# throwaway try-it session has apps it'll get for free after a real install.
+# Preinstall Bazaar for the live session so Aurora's app-store launcher works.
+# The installed system still uses Aurora's normal first-boot Flatpak setup.
 
 set -exo pipefail
 
@@ -25,6 +23,12 @@ mkdir -p "$(realpath /root)"
 # bwrap tries to write /proc/sys/user/max_user_namespaces which is mounted
 # read-only during a container build; remount rw.
 mount -o remount,rw /proc/sys
+
+# Seed the live filesystem's system Flatpak installation, including runtimes.
+flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+flatpak install --system --noninteractive -y flathub io.github.kolunmi.Bazaar
+flatpak info --system io.github.kolunmi.Bazaar
+test -s /var/lib/flatpak/exports/share/applications/io.github.kolunmi.Bazaar.desktop
 
 # Live-bootable initramfs: the ostree-boot initramfs already in the image
 # doesn't know how to mount root from a squashfs. dmsquash-live(-autooverlay)
