@@ -5,6 +5,13 @@ set -ouex pipefail
 # Copy the contents of system_files/ of the git repo to /
 cp -avf "/ctx/system_files"/. /
 
+# OEM installs create the owner's account through Aurora's Plasma Setup on
+# first boot. Fail the build if the base stops providing this component.
+rpm -q plasma-setup
+systemctl enable plasma-setup.service
+systemctl is-enabled plasma-setup.service
+test ! -e /etc/plasma-setup-done
+
 ### Goodix fingerprint reader (27c6:533c) — Dell XPS 9500
 #
 # libfprint does not drive this reader in-tree. libfprint-tod-goodix is a

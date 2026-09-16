@@ -62,6 +62,19 @@ sudo bootc switch --enforce-container-sigpolicy ghcr.io/kerrongordon/aurora-xps9
 
 ## Getting an ISO
 
+OEM installation is the default: installation does not ask for a personal
+account. On the installed system's first boot, Plasma Setup creates the
+owner's account and configures their initial settings. The live USB still
+uses a temporary live-session account; it is not copied into the installed
+OS. For delivery to another person, shut down after installation and leave
+the first-boot wizard for them to complete.
+
+Rebuild the OS image first, then build the ISO against that published image.
+Existing ISO downloads do not acquire these changes automatically. Before
+shipping an OEM install, verify in a VM that installation skips account
+creation, first boot shows Plasma Setup, and a second boot after completing
+setup reaches normal login without repeating the wizard.
+
 For a live desktop with Aurora's default apps, run **Build Live ISO** in
 GitHub Actions. Download the `aurora-xps9500-live-iso` artifact from the
 successful run. The live image installs the default Flatpaks listed in the

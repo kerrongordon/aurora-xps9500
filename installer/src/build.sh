@@ -69,12 +69,32 @@ mkdir -p /var/lib/rpm-state
 test -x /usr/bin/liveinst
 test -s /usr/share/applications/liveinst.desktop
 
+# OEM installation: defer personal accounts to Plasma Setup in the installed
+# image. Match Aurora's upstream Anaconda profile for both installer UIs.
+mkdir -p /etc/anaconda/profile.d
+cat >/etc/anaconda/profile.d/aurora.conf <<'EOF'
+[Profile]
+profile_id = aurora
+
+[Profile Detection]
+os_id = aurora
+
+[User Interface]
+hidden_spokes =
+    PasswordSpoke
+    UserSpoke
+hidden_webui_pages =
+    root-password
+    anaconda-screen-accounts
+EOF
+
 # Deploy the daily-driver image from the registry, not this live overlay.
 # Installation requires an internet connection. --no-signature-verification matches
 # disk_config/iso.toml's unattended install path, which also switches
 # without cosign enforcement at install time.
 cat >/usr/share/anaconda/interactive-defaults.ks <<'EOF'
 ostreecontainer --url=ghcr.io/kerrongordon/aurora-xps9500:latest --transport=registry --no-signature-verification
+rootpw --lock
 
 # The registry payload does not contain the live ISO's /var/lib/flatpak.
 # Follow Titanoboa's deployment-aware copy so all default apps and runtimes survive.
