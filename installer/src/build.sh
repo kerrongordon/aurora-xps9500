@@ -2,9 +2,18 @@
 #
 # Layers Titanoboa's Container-native ISO contract v0.1.0 onto the real
 # aurora-xps9500 image. Adapted from ublue-os/titanoboa's own
-# examples/bazzite/src/build.sh — dropped the flatpak/payload-prefetch
-# steps, which are Bazzite-specific and unrelated to the live-boot
-# mechanism itself.
+# examples/bazzite/src/build.sh, with the Bazzite-specific branding,
+# secure-boot enrollment, and flatpak preseeding dropped — but NOT its
+# titanoboa_hook_postrootfs.sh anaconda-live install, which is the actual
+# installer mechanism. Earlier revisions of this script skipped that too,
+# on the mistaken assumption livesys-scripts provides an installer by
+# itself; it doesn't, so there was no way to install from the live session
+# at all. See the anaconda-live block below for what's added back.
+#
+# Flatpaks intentionally stay out of the live session: Aurora's normal
+# first-boot flatpak install runs against a real installed system, not an
+# ephemeral live overlay, and isn't worth duplicating here just so a
+# throwaway try-it session has apps it'll get for free after a real install.
 
 set -exo pipefail
 
@@ -26,10 +35,31 @@ DRACUT_NO_XATTR=1 dracut -v --force --zstd --reproducible --no-hostonly \
     --add "dmsquash-live dmsquash-live-autooverlay" \
     "/usr/lib/modules/${kernel}/initramfs.img" "${kernel}"
 
-# Live session UX: auto-login live user, "Install to Hard Drive" launcher.
+# Live session UX: auto-login live user via livesys-scripts.
 dnf5 install -y livesys-scripts
 sed -i "s/^livesys_session=.*/livesys_session=kde/" /etc/sysconfig/livesys
 systemctl enable livesys.service livesys-late.service
+
+# The actual installer. anaconda-live ships /usr/bin/liveinst plus a
+# liveinst.desktop entry ("Install to Hard Drive") that shows up in KDE's
+# app launcher on its own — livesys-scripts only manages the live session,
+# it has no installer of its own. libblockdev-{btrfs,lvm,dm} are Anaconda's
+# storage backends; without them the Storage spoke can't format a target
+# disk. /var/lib/rpm-state is expected to exist by the Anaconda Web UI.
+dnf5 install -y firefox anaconda-live libblockdev-{btrfs,lvm,dm}
+mkdir -p /var/lib/rpm-state
+
+# Fail the build rather than publish another live desktop without an installer.
+test -x /usr/bin/liveinst
+test -s /usr/share/applications/liveinst.desktop
+
+# Deploy the daily-driver image from the registry, not this live overlay.
+# Installation requires an internet connection. --no-signature-verification matches
+# disk_config/iso.toml's unattended install path, which also switches
+# without cosign enforcement at install time.
+cat >/usr/share/anaconda/interactive-defaults.ks <<'EOF'
+ostreecontainer --url=ghcr.io/kerrongordon/aurora-xps9500:latest --transport=registry --no-signature-verification
+EOF
 
 # grub2-efi-x64-cdboot provides gcdx64.efi, which the ISO contract needs.
 dnf5 install -y grub2-efi-x64-cdboot xorriso isomd5sum
