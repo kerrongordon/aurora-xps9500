@@ -62,6 +62,15 @@ sudo bootc switch --enforce-container-sigpolicy ghcr.io/kerrongordon/aurora-xps9
 
 ## Getting an ISO
 
+For a live desktop with Aurora's default apps, run **Build Live ISO** in
+GitHub Actions. Download the `aurora-xps9500-live-iso` artifact from the
+successful run. The live image installs the default Flatpaks listed in the
+base image's `system-flatpaks.Brewfile`, and Anaconda copies them and their
+runtimes into the installed system. The OS payload still requires internet
+access during installation.
+
+For the separate disk-image workflow:
+
 GitHub Actions → **Build disk images** → **Run workflow** → pick `amd64`.
 Builds an Anaconda installer ISO (and a qcow2) from whatever's currently at
 `ghcr.io/kerrongordon/aurora-xps9500:latest`; the ISO installs like stock

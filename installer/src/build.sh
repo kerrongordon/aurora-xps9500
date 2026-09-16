@@ -3,14 +3,14 @@
 # Layers Titanoboa's Container-native ISO contract v0.1.0 onto the real
 # aurora-xps9500 image. Adapted from ublue-os/titanoboa's own
 # examples/bazzite/src/build.sh, with the Bazzite-specific branding,
-# secure-boot enrollment, and full flatpak preseeding dropped — but NOT its
+# secure-boot enrollment dropped — but NOT its
 # titanoboa_hook_postrootfs.sh anaconda-live install, which is the actual
 # installer mechanism. Earlier revisions of this script skipped that too,
 # on the mistaken assumption livesys-scripts provides an installer by
 # itself; it doesn't, so there was no way to install from the live session
 # at all. See the anaconda-live block below for what's added back.
 #
-# Preinstall Bazaar for the live session so Aurora's app-store launcher works.
+# Preinstall Aurora's default Flatpaks for the live session.
 # Copy the seeded Flatpaks into the installed deployment in Anaconda's post step.
 
 set -exo pipefail
@@ -24,10 +24,22 @@ mkdir -p "$(realpath /root)"
 # read-only during a container build; remount rw.
 mount -o remount,rw /proc/sys
 
-# Seed the live filesystem's system Flatpak installation, including runtimes.
+# Use the app manifest from this base image, keeping its Aurora defaults in sync.
+# This is base Aurora; the separate DX app manifest does not apply.
+flatpak_manifest=/usr/share/ublue-os/homebrew/system-flatpaks.Brewfile
+test -s "$flatpak_manifest"
+mapfile -t default_flatpaks < <(sed -nE 's/^[[:space:]]*flatpak[[:space:]]+"([^"]+)"[[:space:]]*(#.*)?$/\1/p' "$flatpak_manifest")
+if (( ${#default_flatpaks[@]} == 0 )); then
+    echo "No default Flatpaks found in $flatpak_manifest" >&2
+    exit 1
+fi
+
+# Seed all default apps and their runtimes into the live filesystem.
 flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-flatpak install --system --noninteractive -y flathub io.github.kolunmi.Bazaar
-flatpak info --system io.github.kolunmi.Bazaar
+flatpak install --system --noninteractive -y flathub "${default_flatpaks[@]}"
+for app in "${default_flatpaks[@]}"; do
+    flatpak info --system "$app"
+done
 test -s /var/lib/flatpak/exports/share/applications/io.github.kolunmi.Bazaar.desktop
 
 # Live-bootable initramfs: the ostree-boot initramfs already in the image
@@ -65,7 +77,7 @@ cat >/usr/share/anaconda/interactive-defaults.ks <<'EOF'
 ostreecontainer --url=ghcr.io/kerrongordon/aurora-xps9500:latest --transport=registry --no-signature-verification
 
 # The registry payload does not contain the live ISO's /var/lib/flatpak.
-# Follow Titanoboa's deployment-aware copy so Bazaar and its runtimes survive.
+# Follow Titanoboa's deployment-aware copy so all default apps and runtimes survive.
 %post --nochroot --erroronfail --log=/tmp/install-flatpaks.log
 set -euo pipefail
 deployment="$(ostree rev-parse --repo=/mnt/sysimage/ostree/repo ostree/0/1/0)"
