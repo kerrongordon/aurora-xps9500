@@ -8,7 +8,7 @@ COPY system_files /system_files
 # the GTX 1650 Ti in the target Dell XPS 9500) and pre-signed so no MOK
 # enrollment is needed. Base Aurora (not aurora-dx) since this setup is
 # podman-only and doesn't want DX's bundled Docker/Incus.
-FROM ghcr.io/ublue-os/aurora-nvidia-open:stable@sha256:e5e74716027167cc8b5e90c25fadad4117550cc9bea88a45a237931bee41a8d4
+FROM ghcr.io/ublue-os/aurora-nvidia-open:stable
 
 ### [IM]MUTABLE /opt
 ## Some bootable images, like Fedora, have /opt symlinked to /var/opt, in order to
