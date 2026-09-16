@@ -11,7 +11,7 @@
 # at all. See the anaconda-live block below for what's added back.
 #
 # Preinstall Bazaar for the live session so Aurora's app-store launcher works.
-# The installed system still uses Aurora's normal first-boot Flatpak setup.
+# Copy the seeded Flatpaks into the installed deployment in Anaconda's post step.
 
 set -exo pipefail
 
@@ -50,7 +50,7 @@ systemctl enable livesys.service livesys-late.service
 # it has no installer of its own. libblockdev-{btrfs,lvm,dm} are Anaconda's
 # storage backends; without them the Storage spoke can't format a target
 # disk. /var/lib/rpm-state is expected to exist by the Anaconda Web UI.
-dnf5 install -y firefox anaconda-live libblockdev-{btrfs,lvm,dm}
+dnf5 install -y firefox anaconda-live rsync libblockdev-{btrfs,lvm,dm}
 mkdir -p /var/lib/rpm-state
 
 # Fail the build rather than publish another live desktop without an installer.
@@ -63,6 +63,18 @@ test -s /usr/share/applications/liveinst.desktop
 # without cosign enforcement at install time.
 cat >/usr/share/anaconda/interactive-defaults.ks <<'EOF'
 ostreecontainer --url=ghcr.io/kerrongordon/aurora-xps9500:latest --transport=registry --no-signature-verification
+
+# The registry payload does not contain the live ISO's /var/lib/flatpak.
+# Follow Titanoboa's deployment-aware copy so Bazaar and its runtimes survive.
+%post --nochroot --erroronfail --log=/tmp/install-flatpaks.log
+set -euo pipefail
+deployment="$(ostree rev-parse --repo=/mnt/sysimage/ostree/repo ostree/0/1/0)"
+target="/mnt/sysimage/ostree/deploy/default/deploy/${deployment}.0/var/lib/flatpak"
+test -d "/mnt/sysimage/ostree/deploy/default/deploy/${deployment}.0"
+mkdir -p "$target"
+rsync -aAXH --filter='-x security.selinux' /var/lib/flatpak/ "$target/"
+test -s "$target/exports/share/applications/io.github.kolunmi.Bazaar.desktop"
+%end
 EOF
 
 # grub2-efi-x64-cdboot provides gcdx64.efi, which the ISO contract needs.
