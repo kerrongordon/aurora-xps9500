@@ -3,6 +3,9 @@ set -euo pipefail
 
 # Bundle the tools required by radleylewis/zsh for an offline first launch.
 dnf5 install -y zsh git neovim eza bat fd-find fzf zoxide ripgrep
+# The startup smoke test needs a PTY; minimal Aurora images may omit script.
+# Resolve its RPM by file path instead of assuming a util-linux package split.
+dnf5 install -y /usr/bin/script
 if ! command -v starship >/dev/null; then
     dnf5 -y copr enable atim/starship
     dnf5 install -y starship
@@ -29,7 +32,7 @@ jeffreytse/zsh-vi-mode 91cafe4a09b6670cb8e761aa413e5f7b9e00816f
 zdharma-continuum/fast-syntax-highlighting 4672ad5dd9ad68a7effc1476d65afb7c584ce2b3
 EOF
 
-for tool in zsh git nvim eza bat fd fzf zoxide rg starship; do
+for tool in zsh git nvim eza bat fd fzf zoxide rg starship script; do
     command -v "$tool"
 done
 for config in /etc/skel/.zshenv /etc/skel/.config/zsh/.zshenv \
