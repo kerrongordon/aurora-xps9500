@@ -1,8 +1,8 @@
 # aurora-xps9500
 
 A personal [bootc](https://github.com/bootc-dev/bootc) image, derived from
-[Aurora](https://github.com/ublue-os/aurora), for a Dell XPS 9500. Everything
-is stock Aurora except one addition: the Goodix fingerprint driver, baked in
+[Aurora](https://github.com/ublue-os/aurora), for a Dell XPS 9500. Adds OEM
+first-boot setup, a preconfigured Zsh shell, and the Goodix fingerprint driver, baked in
 at build time instead of as a runtime `rpm-ostree override` (which could
 otherwise block `bootc upgrade` on any Fedora libfprint bump).
 
@@ -32,9 +32,39 @@ If the COPR hasn't published a build for the base image's current Fedora
 release yet, pin `build_files/build.sh` to an older `fedora-NN` repo instead
 — the blob itself is release-agnostic.
 
-Everything else — zsh, dotfiles, Homebrew, dev tools — is deliberately left
-out of the image and handled separately, post-install, on the running
-system.
+**Zsh for new accounts**, using [radleylewis/zsh](https://github.com/radleylewis/zsh).
+Plasma Setup uses the image's `useradd` default, `/bin/zsh`, and copies the
+configuration from `/etc/skel` into each new home. The image includes Neovim,
+eza, bat, fd, fzf, zoxide, ripgrep, Starship (from `atim/starship` COPR when
+not already installed), and the four pinned Zsh plugins. First launch works
+without downloading plugins. Personal changes go in
+`~/.config/zsh/local.zsh`; `zplugin-update` updates the user's plugin copies.
+Use a Nerd Font in the terminal for the prompt and listing icons.
+
+Existing accounts keep their current shell and dotfiles. Rebuild the OS image
+and ISO to include these defaults in new installations.
+
+### Toolbx
+
+Toolbx shares your home, so it sees the same Zsh settings and plugins. It has
+its own packages: install the dependencies inside each Fedora container:
+
+```bash
+toolbox enter
+sudo dnf install -y zsh git neovim eza bat fd-find fzf zoxide ripgrep
+sudo dnf copr enable -y atim/starship
+sudo dnf install -y starship
+sudo dnf copr disable -y atim/starship
+exit
+toolbox run zsh
+```
+
+Use `toolbox run --container NAME zsh` for a named container. Toolbx's default
+shell is separate from the host account's shell; explicitly launching Zsh
+avoids relying on that default. Other container distributions need equivalent
+packages and a recent Fzf supporting `fzf --zsh`. The optional upstream `lf`
+and `stream` helpers additionally require `lf` or `mpv` and suitable device
+access; those tools are not bundled by this configuration.
 
 ## Building locally
 
@@ -102,5 +132,6 @@ builds, and ArtifactHub listing — the pieces specific to this image are:
 
 - `Containerfile` — `FROM` the base above, then `RUN /ctx/build.sh`
 - `build_files/build.sh` — the Goodix COPR swap, kept idempotent
-- `system_files/` — file overlays, empty (no overrides beyond the driver)
+- `build_files/zsh.sh` — shell dependencies, pinned plugins, default shell, startup checks
+- `system_files/` — new-user Zsh configuration in `/etc/skel`
 - `disk_config/iso.toml` — the KDE installer kickstart for ISO builds

@@ -12,6 +12,8 @@ systemctl enable plasma-setup.service
 systemctl is-enabled plasma-setup.service
 test ! -e /etc/plasma-setup-done
 
+bash /ctx/zsh.sh
+
 ### Goodix fingerprint reader (27c6:533c) — Dell XPS 9500
 #
 # libfprint does not drive this reader in-tree. libfprint-tod-goodix is a
